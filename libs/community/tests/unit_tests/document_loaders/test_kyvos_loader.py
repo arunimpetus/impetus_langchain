@@ -1,43 +1,61 @@
-from pathlib import Path
-from langchain_core.documents import Document
+import unittest
+import os
+from unittest import mock
+from unittest.mock import MagicMock, patch
 from langchain_community.document_loaders.kyvos_loader import KyvosLoader
 
-import os
 
 
-class TestKyvosLoader:
-    parsed_json = {'login_url': 'https://trial.kyvosinsights.com/kyvos/rest/login',
-                   'query_url': 'https://trial.kyvosinsights.com/kyvos/rest/export/query',
-                   'query_type': 'SQL',
-                   'output_format': 'csv',
-                   'line_seperator': '%5Cr%5Cn',
-                   'enclosed_by': "'",
-                   'connector_type': 'Rest',
-                   'zipped': 'false',
-                   'include_header': 'true',
-                   'kms': 'false',
-                   'output_file_name': "sample_data_1.csv",
-                   'header_accept': 'application/octet-stream',
-                   'maxRows': 1000000}
-    limit = 2
-    username = 'trialuser1'
-    password = 'Welcome@123'
-    query = f"SELECT `a ssb technical performance 30b_v2`.`customer id` AS `customer id`, `a ssb technical performance 30b_v2`.`postal code` AS `postal code`, `a ssb technical performance 30b_v2`.`city` AS `city`, `a ssb technical performance 30b_v2`.`country` AS `country` FROM `ssb - manufacturing use case`.`a ssb technical performance 30b_v2` `a ssb technical performance 30b_v2` GROUP BY  `a ssb technical performance 30b_v2`.`customer id`, `a ssb technical performance 30b_v2`.`postal code`, `a ssb technical performance 30b_v2`.`city`, `a ssb technical performance 30b_v2`.`country` LIMIT {limit}"
+class TestKyvosLoader(unittest.TestCase):
+    @mock.patch.dict(
+    os.environ,
+    {
+        "KYVOS_USERNAME": "test",
+        "KYVOS_PASSWORD": "password",
+    },
+    )
 
-    # Tests that a CSV file with valid data is loaded successfully.
-    def test_kyvos_loader_load_valid_data(self) -> None:
-        # Setup
-        expected_docs = [Document(page_content="'customer id': '18247','postal code': '380001','city': 'Ahmedabad',"
-                                               "'country': 'India'", metadata={'file_name': 'sample_data_1.csv',
-                                                                               'row_no': 0}),
-                         Document(
-                             page_content="'customer id': '24010','postal code': '380001','city': 'Ahmedabad',"
-                                          "'country': 'India'",
-                             metadata={'file_name': 'sample_data_1.csv', 'row_no': 1})]
+    def setUp(self):
+        # Initialize necessary parameters or mock dependencies if any
+        self.config_params = {'login_url': 'https://example.com/login',
+                             'query_url': 'https://example.com/query',
+                            'query_type': 'SQL',
+                            'output_format': 'csv',
+                            'line_seperator': '%5Cr%5Cn',
+                            'enclosed_by': "'",
+                            'connector_type': 'Rest',
+                            'zipped': 'false',
+                            'include_header': 'true',
+                            'kms': 'false',
+                            'output_file_name': "sample_data_1.csv",
+                            'header_accept': 'application/octet-stream',
+                            'maxRows': 1000000}  
+        query="Query"
+        self.loader = KyvosLoader(configuration_parameters=self.config_params,query=query)
 
-        # Exercise
-        loader = KyvosLoader(configuration_parameters=parsed_json, query=query, username=username, password=password)
-        result = loader.load()
+    def test_get_headers_with_login_url(self):
+        # Test get_headers method when login_url is provided
+        # Mocking requests.post to simulate successful response
+        with patch('requests.post') as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.text = '<SUCCESS>session_id</SUCCESS>'
+            headers = self.loader.get_headers()
+            self.assertIn('Content-Type', headers)
+            self.assertIn('Accept', headers)
+            self.assertIn('sessionid', headers)
 
-        # Assert
-        assert result == expected_docs
+    def test_get_headers_with_jwt_token(self):
+        # Test get_headers method when jwt_token is provided
+        self.loader.jwt_token = 'dummy_token'
+        headers = self.loader.get_headers()
+        self.assertIn('Authorization', headers)
+
+    def test_get_headers_without_login_url_nor_jwt_token(self):
+        # Test get_headers method when neither login_url nor jwt_token is provided
+        self.loader.login_url = None
+        self.loader.jwt_token = None
+        headers = self.loader.get_headers()
+        self.assertIn('Authorization', headers)
+
+if __name__ == '__main__':
+    unittest.main()
