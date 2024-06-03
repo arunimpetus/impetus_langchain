@@ -47,7 +47,7 @@ class TestKyvosLoaderIntegration(unittest.TestCase):
         documents = list(loader.lazy_load())
 
         # Assertions
-        # self.assertEqual(len(documents), 0)
+        self.assertEqual(len(documents), 0)
         # self.assertEqual(documents[0].page_content, 'header1: value1,header2: value2')
         # self.assertEqual(documents[0].metadata['file_name'], 'test.csv')
         # self.assertEqual(documents[0].metadata['row_no'], 0)

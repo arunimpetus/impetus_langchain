@@ -1,7 +1,7 @@
 import os
 import unittest
 from unittest import mock
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from langchain_community.document_loaders.kyvos_loader import KyvosLoader
 

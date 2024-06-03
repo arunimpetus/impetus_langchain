@@ -1,37 +1,35 @@
 import base64
 import csv
-import io
 import json
 import os
-
-# import jq
 import re
 import tempfile
-from xml.etree import ElementTree 
+import xml
 import zipfile
 from io import TextIOWrapper
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Union
-
+from typing import Iterator, Optional
 
 import requests
 from langchain_core.documents import Document
 
 from langchain_community.document_loaders.base import BaseLoader
-from langchain_community.document_loaders.helpers import detect_file_encodings
-from langchain_community.document_loaders.unstructured import UnstructuredFileLoader
 
 
 class KyvosLoader(BaseLoader):
     """Load the Kyvos Semantic model data into List of Documents.
-        Each document represents one record from semantic model. Every row is converted into a
-        key/value pair in case of fetched data is of csv type.
-        In case of json first document is by defualt schema of the table as a document object. Data is fetched from kyvos
-        semantic model by hitting Rest endpoints and data is temporary stored in local box either in csv or in json format specified by the user.
-        Once the file is used by loader then file is auto removed from the local box.
+        Each document represents one record from semantic model. 
+        Every row is converted into a key/value pair in case of fetched 
+        data is of csv type. In case of json first document is by defualt
+        schema of the table as a document object. Data is fetched from kyvos
+        semantic model by hitting Rest endpoints and data is temporary stored 
+        in local box either in csv or in json format specified by the user.
+        Once the file is used by loader then file is auto removed from the local 
+        box.
 
      Args:
-        configuration_parameters: configuration parameters needed to hit the rest endpoints.
+        configuration_parameters:configuration parameters needed to hit the rest 
+        endpoints.
         username: username to be logged in
         password: password to be logged in
         query: query to execute on semantic model
@@ -39,7 +37,8 @@ class KyvosLoader(BaseLoader):
         schema: jq expression for json files
 
     Note:
-        Either username with password is needed or either jwt token is needed for validation purpose
+        Either username with password is needed or either
+        jwt token is needed for validation purpose
     """
 
     def __init__(
@@ -56,34 +55,39 @@ class KyvosLoader(BaseLoader):
         self.__dict__ = configuration_parameters
         self.jwt_token = os.getenv("KYVOS_Token") or jwt_token
 
-        if self.jwt_token == None:
+        if self.jwt_token is None:
             self.username = os.getenv("KYVOS_USERNAME") or username
-            if self.username == None:
+            if self.username is None:
                 raise ValueError(
-                    f"Got Null value for Kyvos_username. Either pass the Kyvos_username or set the value in enviornment variable by 'KYVOS_USERNAME'"
+                    """Got Null value for Kyvos_username. 
+                       Either pass the Kyvos_username or 
+                       set the value in enviornment variable by 'KYVOS_USERNAME' """
                 )
             self.password = os.getenv("KYVOS_PASSWORD") or password
-            if self.password == None:
+            if self.password is None:
                 raise ValueError(
-                    f"Got Null value for Kyvos_password. Either pass the Kyvos_password or set the value in enviornment variable by 'KYVOS_PASSWORD'"
+                    """Got Null value for Kyvos_password. 
+                     Either pass the Kyvos_password or 
+                     set the value in enviornment variable by 'KYVOS_PASSWORD'"""
                 )
         else:
-            self.username == None
-            self.password == None
+            self.username = None
+            self.password = None
 
         self.query = query
         self.schema = schema
 
     def get_headers(self) -> str:
-        """Return the header depending on whether user want to hit the rest endpoints by session_id, basic token or jwt token"""
-        #### Based on Session id which require login_url in configuration parameters ####
+        """Return the header depending on whether user want to hit the 
+           rest endpoints by session_id, basic token or jwt token"""
+        ## Based on Session id which require login_url in configuration parameters ##
         headers = {
             "Accept": "",
             "Content-Type": "",
             "Authorization": "",
             "sessionid": "",
         }
-        if self.__dict__.get("login_url", None) != None:
+        if self.__dict__.get("login_url", None) is not None:
             try:
                 self.conn_headers = {
                     "Accept": "application/XML",
@@ -102,9 +106,9 @@ class KyvosLoader(BaseLoader):
                 response.raise_for_status()
 
                 if response.status_code != 200:
-                    print("Login failed. Status code:", response.status_code)
+                    raise ValueError(f"Log in failed {response.status_code}")
 
-                root = ElementTree.fromstring(response.text)
+                root = xml.etree.ElementTree.fromstring(response.text)
 
                 session_id = root.find("SUCCESS").text
 
@@ -114,7 +118,8 @@ class KyvosLoader(BaseLoader):
                     "sessionid": f"{session_id}",
                 }
             except Exception as e:
-                print(f"Error is coming {e}")
+                raise ValueError(f"error coming {e}")
+                
 
         #### Based on JWT Token ####
         elif self.jwt_token:
@@ -143,8 +148,9 @@ class KyvosLoader(BaseLoader):
         return headers
 
     def lazy_load(self):
-        """In this function first we save the data temporary onto the local box depending on user specification,
-        then we lazily load the file to give a document iterator.
+        """In this function first we save the data temporary onto the local box
+           depending on user specification, then we lazily load the file to give
+           a document iterator.
         """
 
         #### Initialization Parameters for application/octet-stream ####
@@ -187,7 +193,13 @@ class KyvosLoader(BaseLoader):
 
         ### Getting the headers and sending a post request to get data ####
         headers = self.get_headers()
-        self.payload = f"queryType={self.query_type}&query={self.query}&lineSeparator={self.line_seperator}&enclosedBy={self.enclosed_by}&zipped={self.zipped}&includeHeader={self.include_header}&keepMeasureFormatting={self.kms}&outputFormat={self.output_format}&maxRows={self.maxRows}"
+        self.payload = f"""queryType={self.query_type}&query={self.query}
+                            &lineSeparator={self.line_seperator}
+                            &enclosedBy={self.enclosed_by}
+                            &zipped={self.zipped}&includeHeader={self.include_header}
+                            &keepMeasureFormatting={self.kms}
+                            &outputFormat={self.output_format}
+                            &maxRows={self.maxRows}"""
 
         try:
             ##### Saving the data on hard-disk using chunking ######
@@ -200,7 +212,8 @@ class KyvosLoader(BaseLoader):
                         for chunk in response.iter_content():
                             f.write(chunk)
             except requests.exceptions.HTTPError as e:
-                print("Login failed. Status code:", e.response.status_code)
+                raise ValueError(f"Login failed. Status code {e.response.status_code}")
+               
 
             ##### Extreacting the zipfile ######
             if self.zipped == "true":
@@ -218,10 +231,10 @@ class KyvosLoader(BaseLoader):
                 try:
                     with open(self.file_path, newline="") as file:
                         yield from self._kyvos_csv_parser(file)
-                except FileNotFoundError:
-                    print("File not found")
+                except FileNotFoundError as e:
+                    raise ValueError(f"file not found {e}")
                 except Exception as e:
-                    raise RuntimeError(f"Error loading ") from e
+                    raise RuntimeError("Error loading ") from e
 
             #### Json data parsing ######
             elif self.output_format == "json":
@@ -234,13 +247,13 @@ class KyvosLoader(BaseLoader):
                             yield doc
                             counter += 1
 
-                except FileNotFoundError:
-                    print("File not found")
-                except json.JSONDecodeError:
-                    print("Error decoding JSON file:")
+                except FileNotFoundError as e:
+                    raise ValueError(f"file not found {e}")
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"Json Decoding error {e}")
 
         except Exception as e:
-            print("The error is: ", e)
+            raise ValueError(f"error coming {e}")
 
     ##### Functions to be used for json parsing #####
 
