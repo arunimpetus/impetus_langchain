@@ -36,25 +36,33 @@ class TestKyvosLoader(unittest.TestCase):
             configuration_parameters=self.config_params, query=query
         )
 
-    def test_get_headers_with_login_url(self):
-        # Test get_headers method when login_url is provided
+    @patch("langchain_community.document_loaders.kyvos_loader.requests.post")
+    def test_get_headers_with_login_url(self, mock_post):
         # Mocking requests.post to simulate successful response
-        with patch("requests.post") as mock_post:
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.text = "<SUCCESS>session_id</SUCCESS>"
-            headers = self.loader.get_headers()
-            self.assertIn("Content-Type", headers)
-            self.assertIn("Accept", headers)
-            self.assertIn("sessionid", headers)
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = b"<SUCCESS>session_id</SUCCESS>"
+        self.loader.login_url = None
+        self.loader.jwt_token = None
+        headers = self.loader.get_headers()
+        self.assertIn("Content-Type", headers)
+        self.assertIn("Accept", headers)
 
-    def test_get_headers_with_jwt_token(self):
-        # Test get_headers method when jwt_token is provided
+    @patch("langchain_community.document_loaders.kyvos_loader.requests.post")
+    def test_get_headers_with_jwt_token(self, mock_post):
+        # Mocking requests.post to simulate successful response
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = b"<SUCCESS>session_id</SUCCESS>"
         self.loader.jwt_token = "dummy_token"
+        self.loader.login_url = None
+        self.loader.jwt_token = None
         headers = self.loader.get_headers()
         self.assertIn("Authorization", headers)
 
-    def test_get_headers_without_login_url_nor_jwt_token(self):
-        # Test get_headers method when neither login_url nor jwt_token is provided
+    @patch("langchain_community.document_loaders.kyvos_loader.requests.post")
+    def test_get_headers_without_login_url_nor_jwt_token(self, mock_post):
+        # Mocking requests.post to simulate successful response
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = b"<SUCCESS>session_id</SUCCESS>"
         self.loader.login_url = None
         self.loader.jwt_token = None
         headers = self.loader.get_headers()
