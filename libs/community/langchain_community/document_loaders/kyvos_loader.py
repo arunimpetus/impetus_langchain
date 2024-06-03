@@ -4,7 +4,6 @@ import json
 import os
 import re
 import tempfile
-import xml
 import zipfile
 from io import TextIOWrapper
 from pathlib import Path
@@ -87,6 +86,8 @@ class KyvosLoader(BaseLoader):
             "Authorization": "",
             "sessionid": "",
         }
+        import xml.etree.ElementTree
+        self.ET=xml.etree.ElementTree
         if self.__dict__.get("login_url", None) is not None:
             try:
                 self.conn_headers = {
@@ -108,7 +109,7 @@ class KyvosLoader(BaseLoader):
                 if response.status_code != 200:
                     raise ValueError(f"Log in failed {response.status_code}")
 
-                root = xml.etree.ElementTree.fromstring(response.text)
+                root = self.ET.fromstring(response.text)
 
                 session_id = root.find("SUCCESS").text
 
@@ -144,7 +145,7 @@ class KyvosLoader(BaseLoader):
                 "Accept": self.header_accept,
                 "Authorization": f"{basic_auth}",
             }
-
+     
         return headers
 
     def lazy_load(self):
@@ -193,13 +194,16 @@ class KyvosLoader(BaseLoader):
 
         ### Getting the headers and sending a post request to get data ####
         headers = self.get_headers()
-        self.payload = f"""queryType={self.query_type}&query={self.query}
-                            &lineSeparator={self.line_seperator}
-                            &enclosedBy={self.enclosed_by}
-                            &zipped={self.zipped}&includeHeader={self.include_header}
-                            &keepMeasureFormatting={self.kms}
-                            &outputFormat={self.output_format}
-                            &maxRows={self.maxRows}"""
+        self.payload = f"queryType={self.query_type}"+ \
+                       f"&query={self.query}"+ \
+                       f"&lineSeparator={self.line_seperator}"+ \
+                       f"&enclosedBy={self.enclosed_by}"+ \
+                       f"&zipped={self.zipped}"+ \
+                       f"&includeHeader={self.include_header}"+ \
+                       f"&keepMeasureFormatting={self.kms}"+ \
+                       f"&outputFormat={self.output_format}"+ \
+                       f"&maxRows={self.maxRows}"
+     
 
         try:
             ##### Saving the data on hard-disk using chunking ######
