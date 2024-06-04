@@ -153,35 +153,30 @@ class KyvosLoader(BaseLoader):
 
         #### Initialization Parameters for application/octet-stream ####
         if self.header_accept == "application/octet-stream":
-            if self.output_format == "csv" and self.zipped == "false":
-                self.file_path = "temp.csv"
-            elif self.output_format == "csv" and self.zipped == "true":
-                self.file_path = "temp.zip"
-
-            elif self.output_format == "json" and self.zipped == "false":
-                self.file_path = "temp.json"
+            if self.output_format == "csv":
+                if self.zipped == "false":
+                    self.file_path = "temp.csv"
+                else:
+                    self.file_path = "temp.zip"
+            elif self.output_format == "json":
                 import jq
-
                 self.jq = jq
-
-            elif self.output_format == "json" and self.zipped == "true":
-                import jq
-
-                self.jq = jq
-                self.file_path = "temp.zip"
-
-            #### Initialization Parameters for application/json ####
+                if self.zipped == "false":
+                    self.file_path = "temp.json"
+                else:
+                    self.file_path = "temp.zip"
+                    
+        #### Initialization Parameters for application/json ####
         elif self.header_accept == "application/json":
             self.zipped = "false"
             self.output_format = "json"
             import jq
-
             self.jq = jq
             self.file_path = "temp.json"
             if ".csv" in self.output_file_name:
                 self.output_file_name = re.sub(".csv", ".json", self.output_file_name)
 
-            ### Initialization Parameters for temporary saving the files #######
+        ### Initialization Parameters for temporary saving the files #######
         self.temp_dir = tempfile.TemporaryDirectory()
         _, suffix = os.path.splitext(self.file_path)
 
@@ -190,7 +185,7 @@ class KyvosLoader(BaseLoader):
 
         ### Getting the headers and sending a post request to get data ####
         headers = self.get_headers()
-        self.payload = f"queryType={self.query_type}"+ \
+        payload = f"queryType={self.query_type}"+ \
                        f"&query={self.query}"+ \
                        f"&lineSeparator={self.line_seperator}"+ \
                        f"&enclosedBy={self.enclosed_by}"+ \
@@ -205,7 +200,7 @@ class KyvosLoader(BaseLoader):
             ##### Saving the data on hard-disk using chunking ######
             try:
                 with requests.post(
-                    self.query_url, stream=True, data=self.payload, headers=headers
+                    self.query_url, stream=True, data=payload, headers=headers
                 ) as response:
                     response.raise_for_status()
                     with open(self.file_path, "wb") as f:
