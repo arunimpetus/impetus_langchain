@@ -105,10 +105,7 @@ class KyvosLoader(BaseLoader):
                     data=self.conn_body,
                 )
                 response.raise_for_status()
-
-                if response.status_code != 200:
-                    raise ValueError(f"Log in failed {response.status_code}")
-
+                
                 root = self.ET.fromstring(response.text)
 
                 session_id = root.find("SUCCESS").text
