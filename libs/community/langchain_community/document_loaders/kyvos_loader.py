@@ -212,10 +212,10 @@ class KyvosLoader(BaseLoader):
                         for chunk in response.iter_content():
                             f.write(chunk)
             except requests.exceptions.HTTPError as e:
-                raise ValueError(f"Login failed. Status code {e.response.status_code}")
+                raise RuntimeError(f"Request failed with status code {e.response.status_code}")
                
 
-            ##### Extreacting the zipfile ######
+            ##### Extracting the zipfile ######
             if self.zipped == "true":
                 with zipfile.ZipFile(self.file_path) as z:
                     z.extractall(self.temp_dir.name)
@@ -232,9 +232,9 @@ class KyvosLoader(BaseLoader):
                     with open(self.file_path, newline="") as file:
                         yield from self._kyvos_csv_parser(file)
                 except FileNotFoundError as e:
-                    raise ValueError(f"file not found {e}")
+                    raise FileNotFoundError(f"File not found: {e}")
                 except Exception as e:
-                    raise RuntimeError("Error loading ") from e
+                    raise RuntimeError(f"An error occurred: {e}")
 
             #### Json data parsing ######
             elif self.output_format == "json":
@@ -248,12 +248,12 @@ class KyvosLoader(BaseLoader):
                             counter += 1
 
                 except FileNotFoundError as e:
-                    raise ValueError(f"file not found {e}")
+                    raise FileNotFoundError(f"File not found: {e}")
                 except json.JSONDecodeError as e:
                     raise ValueError(f"Json Decoding error {e}")
 
         except Exception as e:
-            raise ValueError(f"error coming {e}")
+            raise RuntimeError(f"An error occurred: {e}")
 
     ##### Functions to be used for json parsing #####
 
