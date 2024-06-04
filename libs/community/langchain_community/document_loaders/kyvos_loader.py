@@ -116,7 +116,7 @@ class KyvosLoader(BaseLoader):
                     "sessionid": f"{session_id}",
                 }
             except Exception as e:
-                raise ValueError(f"error coming {e}")
+                raise RuntimeError(f"An error occurred: {e}")
                 
 
         #### Based on JWT Token ####
