@@ -185,7 +185,6 @@ class KyvosLoader(BaseLoader):
                 self.output_file_name = re.sub(".csv", ".json", self.output_file_name)
 
             ### Initialization Parameters for temporary saving the files #######
-        self.web_path = None
         self.temp_dir = tempfile.TemporaryDirectory()
         _, suffix = os.path.splitext(self.file_path)
 
