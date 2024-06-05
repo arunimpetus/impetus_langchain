@@ -151,7 +151,7 @@ class KyvosLoader(BaseLoader):
            a document iterator.
         """
 
-        #### Initialization Parameters for application/octet-stream ####
+        #### Setting Parameters for application/octet-stream ####
         if self.header_accept == "application/octet-stream":
             if self.output_format == "csv":
                 if self.zipped == "false":
@@ -166,7 +166,7 @@ class KyvosLoader(BaseLoader):
                 else:
                     self.file_path = "temp.zip"
                     
-        #### Initialization Parameters for application/json ####
+        #### Setting Parameters for application/json ####
         elif self.header_accept == "application/json":
             self.zipped = "false"
             self.output_format = "json"
@@ -176,10 +176,9 @@ class KyvosLoader(BaseLoader):
             if ".csv" in self.output_file_name:
                 self.output_file_name = re.sub(".csv", ".json", self.output_file_name)
 
-        ### Initialization Parameters for temporary saving the files #######
+        ### Setting Parameters for temporary saving the files #######
         self.temp_dir = tempfile.TemporaryDirectory()
         _, suffix = os.path.splitext(self.file_path)
-
         temp_file = os.path.join(self.temp_dir.name, f"tmp{suffix}")
         self.file_path = str(temp_file)
 
