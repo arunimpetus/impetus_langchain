@@ -90,19 +90,19 @@ class KyvosLoader(BaseLoader):
         self.ET=xml.etree.ElementTree
         if self.__dict__.get("login_url", None) is not None:
             try:
-                self.conn_headers = {
+                conn_headers = {
                     "Accept": "application/XML",
                     "Content-Type": "application/x-www-form-urlencoded",
                 }
-                self.conn_body = {
+                conn_body = {
                     "username": f"{self.username}",
                     "password": f"{self.password}",
                 }
 
                 response = requests.post(
                     url=self.login_url,
-                    headers=self.conn_headers,
-                    data=self.conn_body,
+                    headers=conn_headers,
+                    data=conn_body,
                 )
                 response.raise_for_status()
                 
