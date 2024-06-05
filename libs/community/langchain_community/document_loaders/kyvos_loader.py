@@ -59,15 +59,15 @@ class KyvosLoader(BaseLoader):
             if self.username is None:
                 raise ValueError(
                     """Got Null value for username. 
-                       Either pass the username or 
-                       set the value in enviornment variable by 'KYVOS_USERNAME' """
+                       Either pass the username or  
+                       set the value in enviornment variable"""
                 )
             self.password = os.getenv("KYVOS_PASSWORD") or password
             if self.password is None:
                 raise ValueError(
                     """Got Null value for password. 
-                     Either pass the password or 
-                     set the value in enviornment variable by 'KYVOS_PASSWORD'"""
+                       Either pass the password or  
+                       set the value in enviornment variable"""
                 )
         else:
             self.username = None
@@ -105,11 +105,8 @@ class KyvosLoader(BaseLoader):
                     data=conn_body,
                 )
                 response.raise_for_status()
-                
                 root = self.ET.fromstring(response.text)
-
                 session_id = root.find("SUCCESS").text
-
                 headers = {
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Accept": self.header_accept,
@@ -143,14 +140,36 @@ class KyvosLoader(BaseLoader):
                 "Authorization": f"{basic_auth}",
             }
      
-        return headers
+        return headers    
 
     def lazy_load(self):
         """In this function first we save the data temporary onto the local box
            depending on user specification, then we lazily load the file to give
            a document iterator.
         """
+        try:
+            self.get_and_save_data()
+            if self.output_format == "csv":
+                with open(self.file_path, newline="") as file:
+                    yield from self._kyvos_csv_parser(file)
+            elif self.output_format == "json":
+                self.file_path = Path(self.file_path).resolve()
+                self.schema = self.jq.compile(self.schema)
+                counter = 0
+                with open(self.file_path, "r", encoding="utf-8") as file:
+                    for doc in self._kyvos_json_parser(file.read(), counter):
+                        yield doc
+                        counter += 1
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"File not found: {e}")
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Json Decoding error {e}")
+        except Exception as e:
+            raise RuntimeError(f"An error occurred: {e}")
+                
 
+    ### FUnction for parameters setup ###       
+    def set_parameters(self) -> None:
         #### Setting Parameters for application/octet-stream ####
         if self.header_accept == "application/octet-stream":
             if self.output_format == "csv":
@@ -181,35 +200,30 @@ class KyvosLoader(BaseLoader):
         _, suffix = os.path.splitext(self.file_path)
         temp_file = os.path.join(self.temp_dir.name, f"tmp{suffix}")
         self.file_path = str(temp_file)
-
-        ### Getting the headers and sending a post request to get data ####
-        headers = self.get_headers()
-        payload = f"queryType={self.query_type}"+ \
-                       f"&query={self.query}"+ \
-                       f"&lineSeparator={self.line_seperator}"+ \
-                       f"&enclosedBy={self.enclosed_by}"+ \
-                       f"&zipped={self.zipped}"+ \
-                       f"&includeHeader={self.include_header}"+ \
-                       f"&keepMeasureFormatting={self.kms}"+ \
-                       f"&outputFormat={self.output_format}"+ \
-                       f"&maxRows={self.maxRows}"
-     
-
+        
+        
+    def get_and_save_data(self):
         try:
-            ##### Saving the data on hard-disk using chunking ######
-            try:
-                with requests.post(
+            headers = self.get_headers()
+            self.set_parameters()
+            payload = f"queryType={self.query_type}"+ \
+                        f"&query={self.query}"+ \
+                        f"&lineSeparator={self.line_seperator}"+ \
+                        f"&enclosedBy={self.enclosed_by}"+ \
+                        f"&zipped={self.zipped}"+ \
+                        f"&includeHeader={self.include_header}"+ \
+                        f"&keepMeasureFormatting={self.kms}"+ \
+                        f"&outputFormat={self.output_format}"+ \
+                        f"&maxRows={self.maxRows}"
+                        
+            with requests.post(
                     self.query_url, stream=True, data=payload, headers=headers
                 ) as response:
                     response.raise_for_status()
                     with open(self.file_path, "wb") as f:
                         for chunk in response.iter_content():
                             f.write(chunk)
-            except requests.exceptions.HTTPError as e:
-                raise RuntimeError(f"Request failed with status code {e.response.status_code}")
-               
-
-            ##### Extracting the zipfile ######
+                            
             if self.zipped == "true":
                 with zipfile.ZipFile(self.file_path) as z:
                     z.extractall(self.temp_dir.name)
@@ -219,36 +233,12 @@ class KyvosLoader(BaseLoader):
                         if file.endswith(".csv") or file.endswith(".json")
                     ][0]
                     self.file_path = os.path.join(self.temp_dir.name, self.file_path)
-
-            ##### csv Data Parsing ######
-            if self.output_format == "csv":
-                try:
-                    with open(self.file_path, newline="") as file:
-                        yield from self._kyvos_csv_parser(file)
-                except FileNotFoundError as e:
-                    raise FileNotFoundError(f"File not found: {e}")
-                except Exception as e:
-                    raise RuntimeError(f"An error occurred: {e}")
-
-            #### Json data parsing ######
-            elif self.output_format == "json":
-                try:
-                    self.file_path = Path(self.file_path).resolve()
-                    self.schema = self.jq.compile(self.schema)
-                    counter = 0
-                    with open(self.file_path, "r", encoding="utf-8") as file:
-                        for doc in self._kyvos_json_parser(file.read(), counter):
-                            yield doc
-                            counter += 1
-
-                except FileNotFoundError as e:
-                    raise FileNotFoundError(f"File not found: {e}")
-                except json.JSONDecodeError as e:
-                    raise ValueError(f"Json Decoding error {e}")
-
+        except requests.exceptions.HTTPError as e:
+                raise RuntimeError(f"Request failed with status code {e.response.status_code}")
+            
         except Exception as e:
             raise RuntimeError(f"An error occurred: {e}")
-
+        
     ##### Functions to be used for json parsing #####
 
     def _kyvos_json_parser(self, raw_text: str, counter: int) -> Iterator[Document]:
