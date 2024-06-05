@@ -58,15 +58,15 @@ class KyvosLoader(BaseLoader):
             self.username = os.getenv("KYVOS_USERNAME") or username
             if self.username is None:
                 raise ValueError(
-                    """Got Null value for Kyvos_username. 
-                       Either pass the Kyvos_username or 
+                    """Got Null value for username. 
+                       Either pass the username or 
                        set the value in enviornment variable by 'KYVOS_USERNAME' """
                 )
             self.password = os.getenv("KYVOS_PASSWORD") or password
             if self.password is None:
                 raise ValueError(
-                    """Got Null value for Kyvos_password. 
-                     Either pass the Kyvos_password or 
+                    """Got Null value for password. 
+                     Either pass the password or 
                      set the value in enviornment variable by 'KYVOS_PASSWORD'"""
                 )
         else:
